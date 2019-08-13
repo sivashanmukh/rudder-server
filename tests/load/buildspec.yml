@@ -10,6 +10,7 @@ phases:
       - ls
       - export GO111MODULE=on
       - go build -mod vendor genload.go
+      - mv ./appspec.yml ../../
 
 artifacts:
   files:

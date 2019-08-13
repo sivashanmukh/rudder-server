@@ -2,9 +2,9 @@ version: 0.0
 os: linux
 files:
   - source: /
-    destination: /home/ubuntu/rudder-server-genload
+    destination: /home/ubuntu/rudder-server
 permissions:
-  - object: /home/ubuntu/rudder-server-genload
+  - object: /home/ubuntu/rudder-server
     pattern: '**'
     owner: ubuntu
     group: ubuntu
@@ -12,5 +12,5 @@ permissions:
 
 hooks:
   ApplicationStart:
-    - location: ./start_genload.sh
+    - location: tests/load/start_genload.sh
       timeout: 120
