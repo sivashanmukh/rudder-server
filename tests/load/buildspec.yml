@@ -6,11 +6,10 @@ phases:
       golang: 1.12
   build:
     commands:
-      - cd tests/load
       - ls
       - export GO111MODULE=on
       - go build -mod vendor genload.go
 
 artifacts:
   files:
-    - 'tests/load/*'
+    - '**/*'
