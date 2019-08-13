@@ -1,0 +1,15 @@
+[Unit]
+Description = Setting up Rudder Server
+After = network.target
+
+[Service]
+WorkingDirectory = /home/ubuntu/rudder-server/tests/load
+Restart = always
+ExecStart = /home/ubuntu/rudder-server/tests/load/genload
+StandardOutput = syslog
+StandardError = syslog
+SyslogIdentifier = genload
+
+
+[Install]
+WantedBy = multi-user.target

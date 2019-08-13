@@ -1,4 +1,5 @@
+#!/bin/bash
+
 chown -R ubuntu:ubuntu /home/ubuntu/rudder-server
-cd /home/ubuntu/rudder-server/tests/load
-echo "Ready to run genload.go"
-nohup ./genload &
+systemctl enable genload.service
+systemctl restart genload.service

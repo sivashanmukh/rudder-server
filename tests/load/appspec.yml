@@ -1,6 +1,8 @@
 version: 0.0
 os: linux
 files:
+  - source: scripts/genload.service
+    destination: /etc/systemd/system/
   - source: /
     destination: /home/ubuntu/rudder-server
 permissions:
