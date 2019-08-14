@@ -1,0 +1,17 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      golang: 1.12
+  build:
+    commands:
+      - cd tests/load
+      - ls
+      - export GO111MODULE=on
+      - go build -mod vendor sink.go
+      - mv ./appspec.yml ../
+
+artifacts:
+  files:
+    - '**/*'
