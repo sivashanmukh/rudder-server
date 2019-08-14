@@ -48,7 +48,7 @@ func main() {
 		fmt.Println("No .env file found")
 	}
 	serverIP = config.GetEnv("BACKEND_URL", "http://localhost:8080/hello")
-
+	fmt.Println("server IP", serverIP)
 	done = make(chan bool)
 
 	numberOfUsers := flag.Int("nu", 1, "number of user threads that does the send, default is 1")
