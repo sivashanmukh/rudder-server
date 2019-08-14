@@ -1,6 +1,9 @@
 package main
 
 import (
+	"github.com/joho/godotenv"
+	"github.com/rudderlabs/rudder-server/config"
+
 	//"encoding/json"
 	"bytes"
 	"encoding/json"
@@ -28,18 +31,23 @@ const (
 	rudderJSONPath   = "events.#.rudder"
 	gaJSONPath       = "events.#.GA"
 	variations       = 5
-	serverIP         = "http://localhost:8080/hello"
+	// serverIP         = "http://localhost:8080/hello"
 	// serverIP = "http://172.31.94.69:8080/hello"
 )
 
 var (
 	totalCount uint64
 	failCount  uint64
+	serverIP   string
 )
 
 var done chan bool
 
 func main() {
+	if err := godotenv.Load(); err != nil {
+		fmt.Println("No .env file found")
+	}
+	serverIP = config.GetEnv("BACKEND_URL", "http://localhost:8080/hello")
 
 	done = make(chan bool)
 
