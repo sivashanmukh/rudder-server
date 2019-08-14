@@ -3,12 +3,12 @@ Description = Setting up Rudder Sink
 After = network.target
 
 [Service]
-WorkingDirectory = /home/ubuntu/rudder-server/tests/
+WorkingDirectory = /home/ubuntu/rudder-server/
 Restart = always
-ExecStart = /home/ubuntu/rudder-server/tests/load/sink
+ExecStart = /home/ubuntu/rudder-server/tests/sink
 StandardOutput = syslog
 StandardError = syslog
-SyslogIdentifier = genload
+SyslogIdentifier = sink
 
 
 [Install]
