@@ -48,7 +48,7 @@ func main() {
 		fmt.Println("No .env file found")
 	}
 	serverIP = config.GetEnv("BACKEND_URL", "http://localhost:8080/hello")
-	fmt.Println("server IP", serverIP)
+	waitForServerToStart() // Waits until backend is up before computing stats. Used in automated test-infra.
 	done = make(chan bool)
 
 	numberOfUsers := flag.Int("nu", 1, "number of user threads that does the send, default is 1")
@@ -75,6 +75,18 @@ func main() {
 	}
 
 	fmt.Println("Total Sent", totalCount)
+}
+
+func waitForServerToStart() {
+	for {
+		req, _ := http.NewRequest("GET", serverIP, nil)
+		client := &http.Client{}
+		_, error := client.Do(req)
+		if error == nil {
+			break
+		}
+		time.Sleep(1 * time.Second)
+	}
 }
 
 func generateJobsForSameEvent(uid string, eventName string, count int, rudder bool) {
