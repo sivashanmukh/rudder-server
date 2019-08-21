@@ -38,9 +38,9 @@ const (
 )
 
 var (
-	totalCount uint64
-	failCount  uint64
-	serverIP   string
+	successCount uint64
+	failCount    uint64
+	serverIP     string
 )
 
 var done chan bool
