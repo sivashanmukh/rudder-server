@@ -13,10 +13,14 @@ import (
 	backendconfig "github.com/rudderlabs/rudder-server/backend-config"
 	"github.com/rudderlabs/rudder-server/config"
 	"github.com/rudderlabs/rudder-server/jobsdb"
+	"github.com/rudderlabs/rudder-server/misc"
+	"github.com/rudderlabs/rudder-server/services/stats"
 	"github.com/rudderlabs/rudder-server/utils"
 	uuid "github.com/satori/go.uuid"
 	"github.com/tidwall/gjson"
 )
+
+var batchSizeStat, batchTimeStat, latencyStat *stats.RudderStats
 
 /*
  * The gateway module handles incoming requests from client devices.
@@ -28,7 +32,7 @@ import (
 type webRequestT struct {
 	request *http.Request
 	writer  *http.ResponseWriter
-	done    chan<- struct{}
+	done    chan<- string
 }
 
 type batchWebRequestT struct {
@@ -41,6 +45,7 @@ var (
 	respMessage                               string
 	enabledWriteKeys                          []string
 	configSubscriberLock                      sync.RWMutex
+	maxReqSize                                int
 )
 
 // CustomVal is used as a key in the jobsDB customval column
@@ -60,11 +65,16 @@ func loadConfig() {
 	CustomVal = config.GetString("Gateway.CustomVal", "GW")
 	//Reponse message sent to client
 	respMessage = config.GetString("Gateway.respMessage", "OK")
+	// Maximum request size to gateway
+	maxReqSize = config.GetInt("Gateway.maxReqSizeInKB", 100000) * 1000
 }
 
 func init() {
 	config.Initialize()
 	loadConfig()
+	latencyStat = stats.NewStat("gateway.response_time", stats.TimerType)
+	batchSizeStat = stats.NewStat("gateway.batch_size", stats.CountType)
+	batchTimeStat = stats.NewStat("gateway.batch_time", stats.TimerType)
 }
 
 //HandleT is the struct returned by the Setup call
@@ -81,19 +91,31 @@ type HandleT struct {
 func (gateway *HandleT) webRequestBatchDBWriter(process int) {
 
 	for breq := range gateway.batchRequestQ {
-
 		var jobList []*jobsdb.JobT
+		var jobIDReqMap = make(map[uuid.UUID]*webRequestT)
+		var preDbStoreCount int
+		batchTimeStat.Start()
 		for _, req := range breq.batchRequest {
 			if req.request.Body == nil {
+				preDbStoreCount++
 				continue
 			}
 			body, err := ioutil.ReadAll(req.request.Body)
 			req.request.Body.Close()
 			if err != nil {
 				fmt.Println("Failed to read body from request")
+				req.done <- "Failed to read body from request"
+				preDbStoreCount++
+				continue
+			}
+			if len(body) > maxReqSize {
+				req.done <- "Request size exceeds max limit"
+				preDbStoreCount++
 				continue
 			}
 			if !gateway.verifyRequestBodyConfig(body) {
+				req.done <- "Invalid Write Key"
+				preDbStoreCount++
 				continue
 			}
 			id := uuid.NewV4()
@@ -106,13 +128,16 @@ func (gateway *HandleT) webRequestBatchDBWriter(process int) {
 				EventPayload: []byte(body),
 			}
 			jobList = append(jobList, &newJob)
+			jobIDReqMap[newJob.UUID] = req
 		}
-		gateway.jobsDB.Store(jobList)
 
-		// ACK the http requests
-		for _, req := range breq.batchRequest {
-			req.done <- struct{}{}
+		errorMessagesMap := gateway.jobsDB.Store(jobList)
+		misc.Assert(preDbStoreCount+len(errorMessagesMap) == len(breq.batchRequest))
+		for key, val := range errorMessagesMap {
+			jobIDReqMap[key].done <- val
 		}
+		batchTimeStat.End()
+		batchSizeStat.Count(len(breq.batchRequest))
 
 	}
 }
@@ -169,22 +194,39 @@ func (gateway *HandleT) printStats() {
 	}
 }
 
+func stat(wrappedFunc func(http.ResponseWriter, *http.Request)) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		latencyStat.Start()
+		wrappedFunc(w, r)
+		latencyStat.End()
+	}
+}
+
 //Main handler function for incoming requets
 func (gateway *HandleT) webHandler(w http.ResponseWriter, r *http.Request) {
 	atomic.AddUint64(&gateway.recvCount, 1)
-	done := make(chan struct{})
+	done := make(chan string)
 	req := webRequestT{request: r, writer: &w, done: done}
 	gateway.webRequestQ <- &req
 	//Wait for batcher process to be done
-	<-done
+	errorMessage := <-done
 	atomic.AddUint64(&gateway.ackCount, 1)
-	w.Write([]byte(respMessage))
+	if errorMessage != "" {
+		http.Error(w, errorMessage, 400)
+	} else {
+		w.Write([]byte(respMessage))
+	}
 
+}
+
+func (gateway *HandleT) healthHandler(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("success"))
 }
 
 func (gateway *HandleT) startWebHandler() {
 	fmt.Printf("Starting in %d\n", webPort)
-	http.HandleFunc("/hello", gateway.webHandler)
+	http.HandleFunc("/hello", stat(gateway.webHandler))
+	http.HandleFunc("/health", gateway.healthHandler)
 	http.ListenAndServe(":"+strconv.Itoa(webPort), bugsnag.Handler(nil))
 }
 
