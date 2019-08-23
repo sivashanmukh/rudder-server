@@ -33,14 +33,14 @@ const (
 	rudderJSONPath   = "events.#.rudder"
 	gaJSONPath       = "events.#.GA"
 	variations       = 5
-	// serverIP         = "http://localhost:8080/hello"
-	// serverIP = "http://172.31.94.69:8080/hello"
+	// serverURL         = "http://localhost:8080/hello"
+	// serverURL = "http://172.31.94.69:8080/hello"
 )
 
 var (
 	successCount uint64
 	failCount    uint64
-	serverIP     string
+	serverURL    string
 )
 
 var done chan bool
@@ -55,7 +55,10 @@ func main() {
 	if err := godotenv.Load(); err != nil {
 		fmt.Println("No .env file found")
 	}
-	serverIP = config.GetEnv("BACKEND_URL", "http://localhost:8080/hello")
+
+	serverURL = config.GetEnv("BACKEND_URL", "http://localhost:8080/hello")
+
+	fmt.Printf("Waiting for the backend server at " + serverURL + " ")
 	waitForServerToStart() // Waits until backend is up before computing stats. Used in automated test-infra.
 
 	loadStat = stats.NewStat("genload.num_events", stats.CountType)
@@ -113,7 +116,7 @@ func sendBadJSON(lines []string, rudder bool) {
 
 func waitForServerToStart() {
 	for {
-		req, _ := http.NewRequest("GET", serverIP, nil)
+		req, _ := http.NewRequest("GET", serverURL, nil)
 		client := &http.Client{}
 		_, error := client.Do(req)
 		if error == nil {
@@ -338,7 +341,7 @@ func sendToRudder(jsonPayload string) {
 	loadStat.Increment()
 
 	requestTimeStat.Start()
-	req, err := http.NewRequest("POST", serverIP, bytes.NewBuffer([]byte(jsonPayload)))
+	req, err := http.NewRequest("POST", serverURL, bytes.NewBuffer([]byte(jsonPayload)))
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{}
