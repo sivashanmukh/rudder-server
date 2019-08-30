@@ -106,7 +106,7 @@ func toSendGoodJSON() bool {
 func sendBadJSON(lines []string, rudder bool) {
 	value, _ := sjson.Set("", "batch", "random_string_to_be_replaced")
 	value, _ = sjson.Set(value, "sent_at", time.Now())
-	value, _ = sjson.Set(value, "writeKey", "1P2tiDhWjQbEtLSqnEh9YeDe1tP")
+	value, _ = sjson.Set(value, "writeKey", "1Q9kFQucH8R1zzNlmPWmqhqEoGI")
 	if rudder {
 		value = strings.Replace(value, "random_string_to_be_replaced", fmt.Sprintf("[%s]", strings.Join(lines[:], ",")), 1)
 		sendToRudder(value)
