@@ -4,13 +4,13 @@ phases:
   install:
     runtime-versions:
       golang: 1.12
-  # pre_build:
-  #   commands:
-  #     - $(aws ecr get-login --region us-east-1 --no-include-email)
-  #     - datetime="$(date +'%Y%m%d%H%M')"
-  #     - version="$(cat .version)"
-  #     - git_hash=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
-  #     - image=454531037350.dkr.ecr.us-east-1.amazonaws.com/$ECR_REPO
+  pre_build:
+    commands:
+      - $(aws ecr get-login --region us-east-1 --no-include-email)
+      - datetime="$(date +'%Y%m%d%H%M')"
+      - version="$(cat .version)"
+      - git_hash=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      - image=454531037350.dkr.ecr.us-east-1.amazonaws.com/$ECR_REPO
   build:
     commands:
       # - docker build -t ${image}:latest .
@@ -29,6 +29,6 @@ phases:
   #     - printf '[{"name":"rudder-server","imageUri":"%s"}]' ${image}:${version} > imagedefinitions.json
 
 artifacts:
-  files: 
+  files:
     - '**/*'
     - imagedefinitions.json
