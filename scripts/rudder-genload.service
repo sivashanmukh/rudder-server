@@ -7,7 +7,7 @@ WorkingDirectory = /home/ubuntu/rudder-server/tests/load
 Restart = on-failure
 RestartSec = 3s
 StartLimitInterval = 0
-ExecStart = /home/ubuntu/rudder-server/tests/load/genload
+ExecStart = CONFIG_PATH=/home/ubuntu/rudder-server/config.toml /home/ubuntu/rudder-server/tests/load/genload
 StandardOutput = syslog
 StandardError = syslog
 SyslogIdentifier = genload
