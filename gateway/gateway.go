@@ -89,10 +89,9 @@ type HandleT struct {
 }
 
 func updateWriteKeyStats(writeKeyStats map[string]int) {
-	for k, v := range writeKeyStats {
-		fmt.Printf("key[%s] value[%d]\n", k, v)
-		writeKeyStatsD := stats.NewStat(fmt.Sprintf("gateway.write_key_%s_count", k), stats.CountType)
-		writeKeyStatsD.Count(v)
+	for writeKey, count := range writeKeyStats {
+		writeKeyStatsD := stats.NewWriteKeyStat("gateway.write_key_count", stats.CountType, writeKey)
+		writeKeyStatsD.Count(count)
 	}
 }
 
