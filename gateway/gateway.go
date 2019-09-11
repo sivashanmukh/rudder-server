@@ -99,10 +99,10 @@ func updateWriteKeyStats(writeKeyStats map[string]int) {
 //Function to process the batch requests. It saves data in DB and
 //sends and ACK on the done channel which unblocks the HTTP handler
 func (gateway *HandleT) webRequestBatchDBWriter(process int) {
-	var writeKeyStats = make(map[string]int)
 	for breq := range gateway.batchRequestQ {
 		var jobList []*jobsdb.JobT
 		var jobIDReqMap = make(map[uuid.UUID]*webRequestT)
+		var writeKeyStats = make(map[string]int)
 		var preDbStoreCount int
 		batchTimeStat.Start()
 		for _, req := range breq.batchRequest {
@@ -120,7 +120,7 @@ func (gateway *HandleT) webRequestBatchDBWriter(process int) {
 			if found {
 				writeKeyStats[writeKey.Str] = writeKeyStats[writeKey.Str] + 1
 			} else {
-				writeKeyStats[writeKey.Str] = 0
+				writeKeyStats[writeKey.Str] = 1
 			}
 			if err != nil {
 				req.done <- "Failed to read body from request"
@@ -161,9 +161,9 @@ func (gateway *HandleT) webRequestBatchDBWriter(process int) {
 		}
 		batchTimeStat.End()
 		batchSizeStat.Count(len(breq.batchRequest))
+		updateWriteKeyStats(writeKeyStats)
 
 	}
-	updateWriteKeyStats(writeKeyStats)
 }
 
 func contains(slice []string, str string) bool {
