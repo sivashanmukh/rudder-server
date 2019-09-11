@@ -21,7 +21,7 @@ func init() {
 	statsEnabled = config.GetBool("enableStats", false)
 
 	var err error
-	client, err = statsd.New()
+	client, err = statsd.New(statsd.TagsFormat(statsd.InfluxDB), statsd.Tags("writekey", "dummy_writekey", "app", "my_app"))
 	if err != nil {
 		// If nothing is listening on the target port, an error is returned and
 		// the returned client does nothing but is still usable. So we can
