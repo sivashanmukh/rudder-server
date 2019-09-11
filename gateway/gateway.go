@@ -88,13 +88,6 @@ type HandleT struct {
 	recvCount     uint64
 }
 
-func updateWriteKeyStats(writeKeyStats map[string]int) {
-	for writeKey, count := range writeKeyStats {
-		writeKeyStatsD := stats.NewWriteKeyStat("gateway.write_key_count", stats.CountType, writeKey)
-		writeKeyStatsD.Count(count)
-	}
-}
-
 func updateWriteKeyStatusStats(writeKeyStats map[string]int, isSuccess bool) {
 	var metricName string
 	if isSuccess {
