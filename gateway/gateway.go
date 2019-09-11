@@ -88,10 +88,18 @@ type HandleT struct {
 	recvCount     uint64
 }
 
+func updateWriteKeyStats(writeKeyStats map[string]int) {
+	for k, v := range writeKeyStats {
+		fmt.Printf("key[%s] value[%d]\n", k, v)
+		writeKeyStatsD := stats.NewStat(fmt.Sprintf("gateway.write_key_%s_count", k), stats.CountType)
+		writeKeyStatsD.Count(v)
+	}
+}
+
 //Function to process the batch requests. It saves data in DB and
 //sends and ACK on the done channel which unblocks the HTTP handler
 func (gateway *HandleT) webRequestBatchDBWriter(process int) {
-
+	var writeKeyStats = make(map[string]int)
 	for breq := range gateway.batchRequestQ {
 		var jobList []*jobsdb.JobT
 		var jobIDReqMap = make(map[uuid.UUID]*webRequestT)
@@ -106,6 +114,14 @@ func (gateway *HandleT) webRequestBatchDBWriter(process int) {
 			}
 			body, err := ioutil.ReadAll(req.request.Body)
 			req.request.Body.Close()
+			bodyJSON := fmt.Sprintf("%s", body)
+			writeKey := gjson.Get(bodyJSON, "writeKey")
+			_, found := writeKeyStats[writeKey.Str]
+			if found {
+				writeKeyStats[writeKey.Str] = writeKeyStats[writeKey.Str] + 1
+			} else {
+				writeKeyStats[writeKey.Str] = 0
+			}
 			if err != nil {
 				req.done <- "Failed to read body from request"
 				preDbStoreCount++
@@ -143,6 +159,7 @@ func (gateway *HandleT) webRequestBatchDBWriter(process int) {
 		for key, val := range errorMessagesMap {
 			jobIDReqMap[key].done <- val
 		}
+		updateWriteKeyStats(writeKeyStats)
 		batchTimeStat.End()
 		batchSizeStat.Count(len(breq.batchRequest))
 
