@@ -159,11 +159,11 @@ func (gateway *HandleT) webRequestBatchDBWriter(process int) {
 		for key, val := range errorMessagesMap {
 			jobIDReqMap[key].done <- val
 		}
-		updateWriteKeyStats(writeKeyStats)
 		batchTimeStat.End()
 		batchSizeStat.Count(len(breq.batchRequest))
 
 	}
+	updateWriteKeyStats(writeKeyStats)
 }
 
 func contains(slice []string, str string) bool {
