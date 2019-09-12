@@ -163,7 +163,7 @@ func (gateway *HandleT) webRequestBatchDBWriter(process int) {
 			}
 			jobList = append(jobList, &newJob)
 			jobIDReqMap[newJob.UUID] = req
-			jobWriteKeyMap[newJob.UUID] = writeKey
+			misc.IncrementMapByKey(writeKeySuccessStats, writeKey)
 		}
 
 		errorMessagesMap := gateway.jobsDB.Store(jobList)
