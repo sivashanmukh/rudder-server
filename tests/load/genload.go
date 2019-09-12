@@ -75,8 +75,8 @@ func main() {
 	sendToRuderPtr := flag.Bool("rudder", true, "true/false for sending to rudder BE, default true")
 	// below flags are to send bad json req's to gateway
 	// setting badjson rate 0f 60 sends ~60% (approx since we just compare with rand number) req's with bad json
-	badJSON = flag.Bool("badjson", false, "true/false for sending malformed json as payload to rudder BE")
-	badJSONRate = flag.Int("badjsonRate", 100, "percentage of malformed json sent as events")
+	badJSON = flag.Bool("badjson", true, "true/false for sending malformed json as payload to rudder BE")
+	badJSONRate = flag.Int("badjsonRate", 20, "percentage of malformed json sent as events")
 
 	flag.Parse()
 
@@ -109,7 +109,7 @@ func toSendGoodJSON() bool {
 func sendBadJSON(lines []string, rudder bool) {
 	value, _ := sjson.Set("", "batch", "random_string_to_be_replaced")
 	value, _ = sjson.Set(value, "sent_at", time.Now())
-	value, _ = sjson.Set(value, "writeKey", "1Q9kFQucH8R1zzNlmPWmqhqEoGI")
+	value, _ = sjson.Set(value, "writeKey", "1QHPnbZXrNz45pmJFB6YQTIgpbF")
 	if rudder {
 		value = strings.Replace(value, "random_string_to_be_replaced", fmt.Sprintf("[%s]", strings.Join(lines[:], ",")), 1)
 		sendToRudder(value)
@@ -292,7 +292,7 @@ func generateJobsForMulitpleEvent(uid string, count int, rudder bool) {
 			if isBatchToBeMade {
 				value, _ := sjson.Set("", "batch", rudderEvents)
 				value, _ = sjson.Set(value, "sent_at", time.Now())
-				value, _ = sjson.Set(value, "writeKey", "1P2tiDhWjQbEtLSqnEh9YeDe1tP")
+				value, _ = sjson.Set(value, "writeKey", "1QHPnbZXrNz45pmJFB6YQTIgpbF")
 				////fmt.Println("==================")
 				////fmt.Println(value)
 
