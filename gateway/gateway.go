@@ -10,13 +10,14 @@ import (
 	"time"
 
 	"github.com/bugsnag/bugsnag-go"
-	backendconfig "github.com/rudderlabs/rudder-server/backend-config"
 	"github.com/rudderlabs/rudder-server/config"
+	backendconfig "github.com/rudderlabs/rudder-server/config/backend-config"
 	"github.com/rudderlabs/rudder-server/jobsdb"
-	"github.com/rudderlabs/rudder-server/misc"
-	"github.com/rudderlabs/rudder-server/misc/logger"
+	sourcedebugger "github.com/rudderlabs/rudder-server/services/source-debugger"
 	"github.com/rudderlabs/rudder-server/services/stats"
 	"github.com/rudderlabs/rudder-server/utils"
+	"github.com/rudderlabs/rudder-server/utils/logger"
+	"github.com/rudderlabs/rudder-server/utils/misc"
 	uuid "github.com/satori/go.uuid"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
@@ -45,7 +46,7 @@ var (
 	webPort, maxBatchSize, maxDBWriterProcess int
 	batchTimeout                              time.Duration
 	respMessage                               string
-	enabledWriteKeys                          []string
+	enabledWriteKeysSourceMap                 map[string]string
 	configSubscriberLock                      sync.RWMutex
 	maxReqSize                                int
 )
@@ -119,6 +120,9 @@ func (gateway *HandleT) webRequestBatchDBWriter(process int) {
 		var writeKeySuccessStats = make(map[string]int)
 		var writeKeyFailStats = make(map[string]int)
 		var preDbStoreCount int
+		//Saving the event data read from req.request.Body to the splice.
+		//Using this to send event schema to the config backend.
+		var events []*string
 		batchTimeStat.Start()
 		for _, req := range breq.batchRequest {
 			ipAddr := misc.GetIPFromReq(req.request)
@@ -129,7 +133,9 @@ func (gateway *HandleT) webRequestBatchDBWriter(process int) {
 			}
 			body, err := ioutil.ReadAll(req.request.Body)
 			req.request.Body.Close()
-			writeKey := gjson.Get(string(body), "writeKey").Str
+			bodyJSON := fmt.Sprintf("%s", body)
+			events = append(events, &bodyJSON)
+			writeKey := gjson.Get(bodyJSON, "writeKey").Str
 			misc.IncrementMapByKey(writeKeyStats, writeKey)
 			if err != nil {
 				req.done <- "Failed to read body from request"
@@ -143,7 +149,7 @@ func (gateway *HandleT) webRequestBatchDBWriter(process int) {
 				misc.IncrementMapByKey(writeKeyFailStats, writeKey)
 				continue
 			}
-			if !gateway.verifyRequestBodyConfig(body) {
+			if !gateway.isWriteKeyEnabled(writeKey) {
 				req.done <- "Invalid Write Key"
 				preDbStoreCount++
 				misc.IncrementMapByKey(writeKeyFailStats, writeKey)
@@ -156,6 +162,7 @@ func (gateway *HandleT) webRequestBatchDBWriter(process int) {
 			//Should be function of body
 			newJob := jobsdb.JobT{
 				UUID:         id,
+				Parameters:   []byte(fmt.Sprintf(`{"source_id": "%v"}`, enabledWriteKeysSourceMap[gjson.Get(fmt.Sprintf("%s", body), "writeKey").Str])),
 				CreatedAt:    time.Now(),
 				ExpireAt:     time.Now(),
 				CustomVal:    CustomVal,
@@ -184,21 +191,23 @@ func (gateway *HandleT) webRequestBatchDBWriter(process int) {
 	}
 }
 
-func contains(slice []string, str string) bool {
-	for _, s := range slice {
-		if s == str {
-			return true
+		//Sending events to config backend
+		for _, event := range events {
+			sourcedebugger.RecordEvent(gjson.Get(*event, "writeKey").Str, *event)
 		}
+
+		batchTimeStat.End()
+		batchSizeStat.Count(len(breq.batchRequest))
+		updateWriteKeyStats(writeKeyStats)
+		updateWriteKeyStatusStats(writeKeySuccessStats, true)
+		updateWriteKeyStatusStats(writeKeyFailStats, false)
 	}
-	return false
 }
 
-func (gateway *HandleT) verifyRequestBodyConfig(body []byte) bool {
-	bodyJSON := fmt.Sprintf("%s", body)
-	writeKey := gjson.Get(bodyJSON, "writeKey")
+func (gateway *HandleT) isWriteKeyEnabled(writeKey string) bool {
 	configSubscriberLock.RLock()
 	defer configSubscriberLock.RUnlock()
-	if !contains(enabledWriteKeys, writeKey.Str) {
+	if !misc.Contains(enabledWriteKeysSourceMap, writeKey) {
 		return false
 	}
 	return true
@@ -265,7 +274,12 @@ func (gateway *HandleT) webHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (gateway *HandleT) healthHandler(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("success"))
+	var json = []byte(`{"server":"UP","db":"UP"}`)
+	sjson.SetBytes(json, "server", "UP")
+	if !gateway.jobsDB.CheckPGHealth() {
+		sjson.SetBytes(json, "db", "DOWN")
+	}
+	w.Write(json)
 }
 
 func (gateway *HandleT) startWebHandler() {
@@ -283,11 +297,11 @@ func backendConfigSubscriber() {
 	for {
 		config := <-ch1
 		configSubscriberLock.Lock()
-		enabledWriteKeys = []string{}
+		enabledWriteKeysSourceMap = map[string]string{}
 		sources := config.Data.(backendconfig.SourcesT)
 		for _, source := range sources.Sources {
 			if source.Enabled {
-				enabledWriteKeys = append(enabledWriteKeys, source.WriteKey)
+				enabledWriteKeysSourceMap[source.WriteKey] = source.ID
 			}
 		}
 		configSubscriberLock.Unlock()

@@ -15,7 +15,7 @@ import (
 	"github.com/bugsnag/bugsnag-go"
 	"github.com/go-redis/redis"
 	"github.com/rudderlabs/rudder-server/config"
-	"github.com/rudderlabs/rudder-server/misc"
+	"github.com/rudderlabs/rudder-server/utils/misc"
 	"github.com/rudderlabs/rudder-server/services/stats"
 	"golang.org/x/time/rate"
 )
@@ -81,8 +81,8 @@ func countError(errType string) {
 	errorCounts[errType]++
 }
 
-var countStat = stats.NewStat("sink.request_count", stats.TimerType)
-var successStat = stats.NewStat("sink.success_count", stats.TimerType)
+var countStat = stats.NewStat("sink.request_count", stats.CountType)
+var successStat = stats.NewStat("sink.success_count", stats.CountType)
 
 func stat(wrappedFunc func(http.ResponseWriter, *http.Request)) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
