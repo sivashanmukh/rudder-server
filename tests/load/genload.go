@@ -22,8 +22,8 @@ import (
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
 
-	"github.com/rudderlabs/rudder-server/utils/misc"
 	"github.com/rudderlabs/rudder-server/services/stats"
+	"github.com/rudderlabs/rudder-server/utils/misc"
 )
 
 const (
@@ -52,6 +52,7 @@ var badJSONRate *int
 
 var loadStat *stats.RudderStats
 var requestTimeStat *stats.RudderStats
+var writeKey = "1RJiqC1B3mINw0p9IxDGmwFS1tz"
 
 func main() {
 	if err := godotenv.Load(); err != nil {
@@ -109,7 +110,7 @@ func toSendGoodJSON() bool {
 func sendBadJSON(lines []string, rudder bool) {
 	value, _ := sjson.Set("", "batch", "random_string_to_be_replaced")
 	value, _ = sjson.Set(value, "sent_at", time.Now())
-	value, _ = sjson.Set(value, "writeKey", "1QHPnbZXrNz45pmJFB6YQTIgpbF")
+	value, _ = sjson.Set(value, "writeKey", writeKey)
 	if rudder {
 		value = strings.Replace(value, "random_string_to_be_replaced", fmt.Sprintf("[%s]", strings.Join(lines[:], ",")), 1)
 		sendToRudder(value)
@@ -167,6 +168,7 @@ func generateJobsForSameEvent(uid string, eventName string, count int, rudder bo
 			if count > 0 && countLoop >= count {
 				break
 			}
+			time.Sleep(500 * time.Millisecond)
 
 			if toSendGoodJSON() {
 				for k, _ := range mapping {
@@ -195,7 +197,7 @@ func generateJobsForSameEvent(uid string, eventName string, count int, rudder bo
 				if isBatchToBeMade {
 					value, _ := sjson.Set("", "batch", rudderEvents)
 					value, _ = sjson.Set(value, "sent_at", time.Now())
-					value, _ = sjson.Set(value, "writeKey", "1QHPnbZXrNz45pmJFB6YQTIgpbF")
+					value, _ = sjson.Set(value, "writeKey", writeKey)
 					////fmt.Println("==================")
 					////fmt.Println(value)
 					////fmt.Println("iter : ", countLoop)
@@ -241,7 +243,6 @@ func generateJobsForMulitpleEvent(uid string, count int, rudder bool) {
 		if count > 0 && countLoop >= count {
 			break
 		}
-
 		if toSendGoodJSON() {
 			eventsPerBatchCount := 0
 			for {
@@ -292,7 +293,7 @@ func generateJobsForMulitpleEvent(uid string, count int, rudder bool) {
 			if isBatchToBeMade {
 				value, _ := sjson.Set("", "batch", rudderEvents)
 				value, _ = sjson.Set(value, "sent_at", time.Now())
-				value, _ = sjson.Set(value, "writeKey", "1QHPnbZXrNz45pmJFB6YQTIgpbF")
+				value, _ = sjson.Set(value, "writeKey", writeKey)
 				////fmt.Println("==================")
 				////fmt.Println(value)
 
