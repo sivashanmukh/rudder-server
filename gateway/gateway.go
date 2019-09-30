@@ -183,19 +183,10 @@ func (gateway *HandleT) webRequestBatchDBWriter(process int) {
 			}
 			jobIDReqMap[uuid].done <- err
 		}
-		batchTimeStat.End()
-		batchSizeStat.Count(len(breq.batchRequest))
-		updateWriteKeyStats(writeKeyStats)
-		updateWriteKeyStatusStats(writeKeySuccessStats, true)
-		updateWriteKeyStatusStats(writeKeyFailStats, false)
-	}
-}
-
 		//Sending events to config backend
 		for _, event := range events {
 			sourcedebugger.RecordEvent(gjson.Get(*event, "writeKey").Str, *event)
 		}
-
 		batchTimeStat.End()
 		batchSizeStat.Count(len(breq.batchRequest))
 		updateWriteKeyStats(writeKeyStats)
