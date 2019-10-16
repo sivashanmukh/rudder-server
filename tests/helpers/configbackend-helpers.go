@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/rudderlabs/rudder-server/config"
 )
@@ -38,6 +39,11 @@ func GetConnectionString() string {
 func FetchEventSchemaCount(dbHandle *sql.DB) int {
 	count := 0
 	dbHandle.QueryRow(fmt.Sprintf(`select count(*) from %s;`, "event_uploads")).Scan(&count)
-	
+
 	return count
+}
+
+func EnableEventUpload(dbHandle *sql.DB) {
+	timeNow := time.Now().UnixNano() / int64(time.Millisecond)
+	dbHandle.QueryRow(fmt.Sprintf(`update %s set config='{"eventUpload":true,"eventUploadTS":%v}' where "writeKey"='%s';`, "sources", timeNow, WriteKey))
 }

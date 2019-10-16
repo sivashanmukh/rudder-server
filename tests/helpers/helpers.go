@@ -3,6 +3,7 @@ package helpers
 import (
 	"bytes"
 	"database/sql"
+	"encoding/base64"
 	"fmt"
 	"net/http"
 	"strings"
@@ -15,63 +16,64 @@ import (
 )
 
 var sampleEvent = `
-	{
-		"writeKey": "#rudderWriteKey#",
-		"batch": [
-			{
-			"message": {
-				"anonymous_id": "49e4bdd1c280bc00",
-				"channel": "android-sdk",
-				"destination_props": {
-				"AF": {
-					"af_uid": "1566363489499-3377330514807116178"
-				}
-				},
-				"context": {
-				"app": {
-					"build": "1",
-					"name": "RudderAndroidClient",
-					"namespace": "com.rudderlabs.android.sdk",
-					"version": "1.0"
-				},
-				"device": {
-					"id": "49e4bdd1c280bc00",
-					"manufacturer": "Google",
-					"model": "Android SDK built for x86",
-					"name": "generic_x86"
-				},
-				"locale": "en-US",
-				"network": {
-					"carrier": "Android"
-				},
-				"screen": {
-					"density": 420,
-					"height": 1794,
-					"width": 1080
-				},
-				"traits": {
-					"anonymous_id": "49e4bdd1c280bc00"
-				},
-				"user_agent": "Dalvik/2.1.0 (Linux; U; Android 9; Android SDK built for x86 Build/PSR1.180720.075)"
-				},
-				"event": "Demo Track",
-				"integrations": {
-				"AD": true,
-				"AF": true
-				},
-				"message_id": "1566904375469-1baf3108-647a-4f20-9867-3072056a07f5",
-				"properties": {
-				"label": "Demo Label",
-				"category": "Demo Category",
-				"value": 5
-				},
-				"timestamp": "2019-08-27 11:12:55+0000",
-				"type": "track"
-			}
-			}
-		]
-	}
+{
+"batch": [
+    {
+      "anonymousId": "49e4bdd1c280bc00",
+      "channel": "android-sdk",
+      "destination_props": {
+        "AF": {
+          "af_uid": "1566363489499-3377330514807116178"
+        }
+      },
+      "context": {
+        "app": {
+          "build": "1",
+          "name": "RudderAndroidClient",
+          "namespace": "com.rudderlabs.android.sdk",
+          "version": "1.0"
+        },
+        "device": {
+          "id": "49e4bdd1c280bc00",
+          "manufacturer": "Google",
+          "model": "Android SDK built for x86",
+          "name": "generic_x86"
+        },
+        "locale": "en-US",
+        "network": {
+          "carrier": "Android"
+        },
+        "screen": {
+          "density": 420,
+          "height": 1794,
+          "width": 1080
+        },
+        "traits": {
+          "anonymousId": "49e4bdd1c280bc00"
+        },
+        "user_agent": "Dalvik/2.1.0 (Linux; U; Android 9; Android SDK built for x86 Build/PSR1.180720.075)"
+      },
+      "event": "Demo Track",
+      "integrations": {
+        "All": true
+	  },
+	  "messageId": "1566904375469-1baf3108-647a-4f20-9867-3072056a07f5",
+      "properties": {
+        "label": "Demo Label",
+        "category": "Demo Category",
+        "value": 5
+      },
+      "type": "track",
+      "originalTimestamp": "2019-10-10T14:22:23.470Z",
+      "sentAt": "2019-10-10T14:22:23.470Z"
+    }
+  ]
+}
 `
+
+const (
+	WriteKey = "1SElxSnnhjGA4o08vniqDyP3PXF"
+)
 
 // EventOptsT is the type specifying override options over sample event.json
 type EventOptsT struct {
@@ -79,6 +81,11 @@ type EventOptsT struct {
 	WriteKey     string
 	ID           string
 	GaVal        int
+}
+
+func basicAuth(username, password string) string {
+	auth := username + ":" + password
+	return base64.StdEncoding.EncodeToString([]byte(auth))
 }
 
 // SendEventRequest sends sample event.json with EventOptionsT overrides to gateway server
@@ -90,23 +97,23 @@ func SendEventRequest(options EventOptsT) int {
 		}
 	}
 	if options.WriteKey == "" {
-		options.WriteKey = "1REVKlIoVwDAIwv4WuMxYexaJ5w"
+		options.WriteKey = WriteKey
 	}
 	if options.ID == "" {
 		options.ID = ksuid.New().String()
 	}
 
-	serverIP := "http://localhost:8080/events"
+	serverIP := "http://localhost:8080/v1/batch"
 
-	jsonPayload, _ := sjson.Set(sampleEvent, "writeKey", options.WriteKey)
-	jsonPayload, _ = sjson.Set(jsonPayload, "sent_at", time.Now())
-	jsonPayload, _ = sjson.Set(jsonPayload, "batch.0.message.integrations", options.Integrations)
-	jsonPayload, _ = sjson.Set(jsonPayload, "batch.0.message.anonymous_id", options.ID)
-	jsonPayload, _ = sjson.Set(jsonPayload, "batch.0.message.traits.anonymous_id", options.ID)
-	jsonPayload, _ = sjson.Set(jsonPayload, "batch.0.message.properties.value", options.GaVal)
+	jsonPayload, _ := sjson.Set(sampleEvent, "batch.0.sentAt", time.Now())
+	jsonPayload, _ = sjson.Set(jsonPayload, "batch.0.integrations", options.Integrations)
+	jsonPayload, _ = sjson.Set(jsonPayload, "batch.0.anonymousId", options.ID)
+	jsonPayload, _ = sjson.Set(jsonPayload, "batch.0.context.traits.anonymousId", options.ID)
+	jsonPayload, _ = sjson.Set(jsonPayload, "batch.0.properties.value", options.GaVal)
 
 	req, err := http.NewRequest("POST", serverIP, bytes.NewBuffer([]byte(jsonPayload)))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Add("Authorization", "Basic "+basicAuth(options.WriteKey, ""))
 
 	client := &http.Client{}
 	resp, err := client.Do(req)

@@ -28,6 +28,8 @@ var _ = Describe("EventSchema", func() {
 		It("verify event schema is stored in config backend db", func() {
 			initEventSchemaCount := helpers.FetchEventSchemaCount(dbHandle)
 
+			helpers.EnableEventUpload(dbHandle)
+
 			helpers.SendEventRequest(helpers.EventOptsT{})
 
 			Eventually(func() int {
