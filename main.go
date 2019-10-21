@@ -144,8 +144,9 @@ func main() {
 	maintenanceMode := flag.Bool("maintenance-mode", false, "a bool")
 
 	clearDB := flag.Bool("cleardb", false, "a bool")
-	cpuprofile := flag.String("cpuprofile", "", "write cpu profile to `file`")
-	memprofile := flag.String("memprofile", "", "write memory profile to `file`")
+	currTime := time.Now().Unix()
+	cpuprofile := flag.String("cpuprofile", fmt.Sprintf("cpuprofile_%v.prof", currTime), "write cpu profile to `file`")
+	memprofile := flag.String("memprofile", fmt.Sprintf("memprofile_%v.prof", currTime), "write memory profile to `file`")
 
 	flag.Parse()
 
