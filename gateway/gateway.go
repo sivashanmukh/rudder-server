@@ -96,6 +96,13 @@ func updateWriteKeyStats(writeKeyStats map[string]int) {
 	}
 }
 
+func updateWriteKeyErrorStats(writeKeyStats map[string]int) {
+	for writeKey, count := range writeKeyStats {
+		writeKeyStatsD := stats.NewWriteKeyStat("gateway.write_key_error_count", stats.CountType, writeKey)
+		writeKeyStatsD.Count(count)
+	}
+}
+
 func updateWriteKeyStatusStats(writeKeyStats map[string]int, isSuccess bool) {
 	var metricName string
 	if isSuccess {
@@ -119,6 +126,7 @@ func (gateway *HandleT) webRequestBatchDBWriter(process int) {
 		var writeKeyStats = make(map[string]int)
 		var writeKeySuccessStats = make(map[string]int)
 		var writeKeyFailStats = make(map[string]int)
+		var writeKeyErrorStats = make(map[string]int)
 		var preDbStoreCount int
 		//Saving the event data read from req.request.Body to the splice.
 		//Using this to send event schema to the config backend.
@@ -138,15 +146,18 @@ func (gateway *HandleT) webRequestBatchDBWriter(process int) {
 			writeKey := gjson.Get(bodyJSON, "writeKey").Str
 			misc.IncrementMapByKey(writeKeyStats, writeKey)
 			if err != nil {
+				logger.Error("Failed to read body from request")
 				req.done <- "Failed to read body from request"
 				preDbStoreCount++
 				misc.IncrementMapByKey(writeKeyFailStats, writeKey)
 				continue
 			}
 			if len(body) > maxReqSize {
+				logger.Errorf("Max request size exceeded, req size in bytes: %v", len(body))
 				req.done <- "Request size exceeds max limit"
 				preDbStoreCount++
 				misc.IncrementMapByKey(writeKeyFailStats, writeKey)
+				misc.IncrementMapByKey(writeKeyErrorStats, writeKey)
 				continue
 			}
 			if !gateway.isWriteKeyEnabled(writeKey) {
@@ -192,6 +203,7 @@ func (gateway *HandleT) webRequestBatchDBWriter(process int) {
 		batchTimeStat.End()
 		batchSizeStat.Count(len(breq.batchRequest))
 		updateWriteKeyStats(writeKeyStats)
+		updateWriteKeyErrorStats(writeKeyErrorStats)
 		updateWriteKeyStatusStats(writeKeySuccessStats, true)
 		updateWriteKeyStatusStats(writeKeyFailStats, false)
 	}
