@@ -23,38 +23,43 @@ import (
 
 //HandleT is an handle to this object used in main.go
 type HandleT struct {
-	gatewayDB      *jobsdb.HandleT
-	routerDB       *jobsdb.HandleT
-	batchRouterDB  *jobsdb.HandleT
-	transformer    *transformerHandleT
-	statsJobs      *misc.PerfStats
-	statJobs       *stats.RudderStats
-	statsDBR       *misc.PerfStats
-	statDBR        *stats.RudderStats
-	statsDBW       *misc.PerfStats
-	statDBW        *stats.RudderStats
-	userJobListMap map[string][]*jobsdb.JobT
-	userEventsMap  map[string][]interface{}
-	userPQItemMap  map[string]*pqItemT
-	userJobPQ      pqT
-	userPQLock     sync.Mutex
+	gatewayDB       *jobsdb.HandleT
+	routerDB        *jobsdb.HandleT
+	batchRouterDB   *jobsdb.HandleT
+	transformer     *transformerHandleT
+	statsJobs       *misc.PerfStats
+	statJobs        *stats.RudderStats
+	statsDBR        *misc.PerfStats
+	statDBR         *stats.RudderStats
+	statsDBW        *misc.PerfStats
+	statDBW         *stats.RudderStats
+	userJobListMap  map[string][]*jobsdb.JobT
+	userEventsMap   map[string][]interface{}
+	userPQItemMap   map[string]*pqItemT
+	lastPQPrintTime time.Time
+	userJobPQ       pqT
+	userPQLock      sync.Mutex
 }
 
 //Print the internal structure
 func (proc *HandleT) Print() {
-	logger.Debug("PriorityQueue")
-	proc.userJobPQ.Print()
-	logger.Debug("JobList")
-	for k, v := range proc.userJobListMap {
-		logger.Debug(k, ":", len(v))
-	}
-	logger.Debug("EventLength")
-	for k, v := range proc.userEventsMap {
-		logger.Debug(k, ":", len(v))
-	}
-	logger.Debug("PQItem")
-	for k, v := range proc.userPQItemMap {
-		logger.Debug(k, ":", *v)
+	if time.Since(proc.lastPQPrintTime) > 5*time.Second {
+
+		logger.Info("PriorityQueue")
+		proc.userJobPQ.Print()
+		logger.Info("JobList: ", len(proc.userJobListMap))
+		for k, v := range proc.userJobListMap {
+			logger.Debug(k, ":", len(v))
+		}
+		logger.Info("EventsMap: ", len(proc.userEventsMap))
+		for k, v := range proc.userEventsMap {
+			logger.Debug(k, ":", len(v))
+		}
+		logger.Info("PQItem: ", len(proc.userPQItemMap))
+		for k, v := range proc.userPQItemMap {
+			logger.Debug(k, ":", *v)
+		}
+		proc.lastPQPrintTime = time.Now()
 	}
 }
 
@@ -75,6 +80,7 @@ func (proc *HandleT) Setup(gatewayDB *jobsdb.HandleT, routerDB *jobsdb.HandleT, 
 	proc.userJobListMap = make(map[string][]*jobsdb.JobT)
 	proc.userEventsMap = make(map[string][]interface{})
 	proc.userPQItemMap = make(map[string]*pqItemT)
+	proc.lastPQPrintTime = time.Now()
 	proc.userJobPQ = make(pqT, 0)
 	proc.statsJobs.Setup("ProcessorJobs")
 	proc.statsDBR.Setup("ProcessorDBRead")
