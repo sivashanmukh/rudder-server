@@ -333,8 +333,6 @@ func (proc *HandleT) createSessions() {
 		}
 		proc.userPQLock.Unlock()
 		if len(userJobsToProcess) > 0 {
-			logger.Debug("Processing Session Check")
-			proc.Print()
 			proc.processUserJobs(userJobsToProcess, userEventsToProcess)
 		}
 	}
