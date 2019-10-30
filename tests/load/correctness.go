@@ -176,7 +176,12 @@ func getS3DestData() {
 		if s3Object.LastModifiedTime.Before(startTime) {
 			continue
 		}
-		jsonPath := "/Users/srikanth/" + "s3-correctness/" + uuid.NewV4().String()
+		home, err := os.UserHomeDir()
+		if err != nil {
+			home = "/tmp"
+		}
+
+		jsonPath := home + "/s3-correctness/" + uuid.NewV4().String()
 		err = os.MkdirAll(filepath.Dir(jsonPath), os.ModePerm)
 		jsonFile, err := os.Create(jsonPath)
 		misc.AssertError(err)
@@ -343,8 +348,8 @@ func main() {
 	testDurationInSec := flag.Int("t", 60, "Duration of the test in seconds. Default is 60 sec")
 	pollTimeInSec := flag.Int("p", 2, "Polling interval in sec to find if sink is inactive")
 	waitTimeInSec := flag.Int("w", 600, "Max wait-time in sec waiting for sink. Default 600s")
-	writeKey = flag.String("writeKey", "1RHJcwtP1PHXwmsJSG1LrBVjRTO", "Write key of source the events should be sent against")
-	sourceID = flag.String("sourceID", "1RHJcypX5HCdEYe6L3PjoCU3j6A", "ID of source the events should be sent against")
+	writeKey = flag.String("writeKey", "1Qb1F3jSWv0eKFBPZcrM7ypgjVo", "Write key of source the events should be sent against")
+	sourceID = flag.String("sourceID", "1Qb1F3oCN29mvGG0Ke4n9zp6Bro", "ID of source the events should be sent against")
 	isS3Test = flag.Bool("S3", false, "Set true to test s3 destination events")
 
 	flag.Parse()

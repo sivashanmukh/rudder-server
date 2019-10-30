@@ -29,7 +29,7 @@ disableEventUploads = false
 # Migration related parameters
 jobDoneMigrateThres = 0.8
 jobStatusMigrateThres = 5
-maxDSSize = 100000
+maxDSSize = 10
 maxMigrateOnce = 10
 mainCheckSleepDurationInS = 2
 backupCheckSleepDurationIns = 5
