@@ -313,6 +313,14 @@ func (gateway *HandleT) webGroupHandler(w http.ResponseWriter, r *http.Request) 
 	gateway.webHandler(w, r, "group")
 }
 
+func (gateway *HandleT) webDSIndexHandler(w http.ResponseWriter, r *http.Request) {
+	logger.LogRequest(r)
+	minDS, curDS := gateway.jobsDB.GetDSIndexRange()
+	respMessage := fmt.Sprintf("{\"minDS\":%d, \"curDS\":%d, \"serverTS\":\"%s\"}", minDS, curDS, time.Now().Format(time.RFC3339))
+	logger.Debug(respMessage)
+	w.Write([]byte(respMessage))
+}
+
 func (gateway *HandleT) webHandler(w http.ResponseWriter, r *http.Request, reqType string) {
 	logger.LogRequest(r)
 	atomic.AddUint64(&gateway.recvCount, 1)
@@ -355,6 +363,9 @@ func (gateway *HandleT) startWebHandler() {
 	http.HandleFunc("/v1/screen", stat(gateway.webScreenHandler))
 	http.HandleFunc("/v1/alias", stat(gateway.webAliasHandler))
 	http.HandleFunc("/v1/group", stat(gateway.webGroupHandler))
+	//End point for replay service. This returns Min and Max DS indexes
+	//present in the DB when the request is made and server timestamp.
+	http.HandleFunc("/v1/dsindex", stat(gateway.webDSIndexHandler))
 	http.HandleFunc("/health", gateway.healthHandler)
 
 	backendconfig.WaitForConfig()

@@ -23,6 +23,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -307,6 +308,37 @@ TearDown releases all the resources
 */
 func (jd *HandleT) TearDown() {
 	jd.dbHandle.Close()
+}
+
+/*
+Function to return min dataset index and max dataset index in the DB
+*/
+func (jd *HandleT) GetDSIndexRange() (minDSIndex, maxDSIndex int) {
+
+	jd.dsListLock.Lock()
+	defer jd.dsListLock.Unlock()
+
+	minDSIndex = math.MaxInt32
+	maxDSIndex = 0
+	backUpList := jd.getBackupDSList()
+	for _, ds := range backUpList {
+		index, err := strconv.Atoi(ds.Index)
+		if err == nil && minDSIndex > index {
+			minDSIndex = index
+		}
+	}
+
+	//dList is already sorted.
+	dList := jd.getDSList(true)
+	ds := dList[len(dList)-1]
+	maxDSIndex, _ = strconv.Atoi(ds.Index)
+
+	if minDSIndex == 0 {
+		ds := dList[0]
+		minDSIndex, _ = strconv.Atoi(ds.Index)
+	}
+
+	return minDSIndex, maxDSIndex
 }
 
 /*
