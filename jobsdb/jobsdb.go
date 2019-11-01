@@ -333,7 +333,7 @@ func (jd *HandleT) GetDSIndexRange() (minDSIndex, maxDSIndex int) {
 	ds := dList[len(dList)-1]
 	maxDSIndex, _ = strconv.Atoi(ds.Index)
 
-	if minDSIndex == 0 {
+	if minDSIndex == math.MaxInt32 {
 		ds := dList[0]
 		minDSIndex, _ = strconv.Atoi(ds.Index)
 	}
