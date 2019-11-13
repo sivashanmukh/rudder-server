@@ -11,8 +11,6 @@ import (
 	"compress/gzip"
 	"flag"
 	"fmt"
-	"io/ioutil"
-	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
@@ -176,7 +174,7 @@ func getS3DestData() {
 		/* if s3Object.LastModifiedTime.Before(startTime) {
 			continue
 		} */
-		jsonPath := "/Users/sayanmitra/" + "s3-correctness/" + uuid.NewV4().String()
+		jsonPath := "/tmp/" + "s3-correctness/" + uuid.NewV4().String()
 		err = os.MkdirAll(filepath.Dir(jsonPath), os.ModePerm)
 		jsonFile, err := os.Create(jsonPath)
 		misc.AssertError(err)
@@ -221,8 +219,6 @@ func main() {
 	redisChan = make(chan []byte)
 
 	testDurationInSec := flag.Int("t", 60, "Duration of the test in seconds. Default is 60 sec")
-	pollTimeInSec := flag.Int("p", 2, "Polling interval in sec to find if sink is inactive")
-	waitTimeInSec := flag.Int("w", 600, "Max wait-time in sec waiting for sink. Default 600s")
 	sourceID = flag.String("sourceID", "1TC7ksYbzOK0T2NVStt31B85a7T", "ID of source the events should be sent against")
 	bucketName := flag.String("bucketName", "rl-test-sayan-s3", "S3 Bucket name")
 	isS3Test = flag.Bool("S3", false, "Set true to test s3 destination events")
@@ -241,27 +237,6 @@ func main() {
 		time.Sleep(5 * time.Second)
 		fmt.Println("Fetching S3 files...")
 		getS3DestData()
-
-	} else {
-		fmt.Printf("Waiting for test sink at %s...\n", sinkServer)
-		var retryCount int
-		for {
-			time.Sleep(time.Duration(*pollTimeInSec) * time.Second)
-			resp, err := http.Get(sinkServer)
-			if err != nil {
-				fmt.Println("Invalid Sink URL")
-			}
-			defer resp.Body.Close()
-			body, err := ioutil.ReadAll(resp.Body)
-			if string(body) == "no" {
-				break
-			}
-			retryCount++
-			if retryCount > (*waitTimeInSec / *pollTimeInSec) {
-				fmt.Println("Wait time exceeded. Exiting... ")
-			}
-		}
-	}
-
+	} 
 	computeTestResults(*testDurationInSec)
 }
