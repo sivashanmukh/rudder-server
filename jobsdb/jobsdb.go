@@ -931,11 +931,11 @@ func (jd *HandleT) storeJobDS(ds dataSetT, job *JobT) (errorMessage string) {
 	}
 	pqErr := err.(*pq.Error)
 	errCode := string(pqErr.Code)
-	if errCode == dbErrorMap["Invalid JSON"] || errCode == dbErrorMap["Invalid Unicode"] {
-		return "Invalid JSON"
-	}
-	jd.assertError(err)
-	return
+	// if errCode == dbErrorMap["Invalid JSON"] || errCode == dbErrorMap["Invalid Unicode"] {
+	// 	return "Invalid JSON"
+	// }
+	// jd.assertError(err)
+	return fmt.Sprintf(`Invalid JSON: %s`, errCode)
 }
 
 func (jd *HandleT) constructQuery(paramKey string, paramList []string, queryType string) string {
