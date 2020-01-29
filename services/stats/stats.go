@@ -5,6 +5,7 @@ import (
 	"github.com/rudderlabs/rudder-server/utils/logger"
 	"github.com/rudderlabs/rudder-server/utils/misc"
 	"gopkg.in/alexcesaro/statsd.v2"
+	"sync"
 )
 
 const (
@@ -16,10 +17,12 @@ const (
 var client *statsd.Client
 var writeKeyClientsMap = make(map[string]*statsd.Client)
 var destClientsMap = make(map[string]*statsd.Client)
+var jobsdbClientsMap = make(map[string]*statsd.Client)
 var statsEnabled bool
 var statsdServerURL string
 var instanceName string
 var conn statsd.Option
+var jobsdbClientsMapLock sync.Mutex
 
 func init() {
 	config.Initialize()
@@ -80,6 +83,24 @@ func NewBatchDestStat(Name string, StatType string, destID string) *RudderStats 
 		DestID:   destID,
 		Client:   destClientsMap[destID],
 	}
+}
+
+func NewJobsDBStat(Name string, StatType string, customVal string) *RudderStats {
+	jobsdbClientsMapLock.Lock()
+	defer jobsdbClientsMapLock.Unlock()
+	if _, found := jobsdbClientsMap[customVal]; !found {
+		var err error
+		jobsdbClientsMap[customVal], err = statsd.New(conn, statsd.TagsFormat(statsd.InfluxDB), statsd.Tags("instanceName", instanceID, "customVal", customVal))
+		if err != nil {
+			logger.Error(err)
+		}
+	}
+	return &RudderStats{
+		Name:     Name,
+		StatType: StatType,
+		Client:   jobsdbClientsMap[customVal],
+	}
+
 }
 
 func (rStats *RudderStats) Count(n int) {
