@@ -1,11 +1,12 @@
 package stats
 
 import (
+	"sync"
+
 	"github.com/rudderlabs/rudder-server/config"
 	"github.com/rudderlabs/rudder-server/utils/logger"
 	"github.com/rudderlabs/rudder-server/utils/misc"
 	"gopkg.in/alexcesaro/statsd.v2"
-	"sync"
 )
 
 const (
@@ -90,7 +91,7 @@ func NewJobsDBStat(Name string, StatType string, customVal string) *RudderStats 
 	defer jobsdbClientsMapLock.Unlock()
 	if _, found := jobsdbClientsMap[customVal]; !found {
 		var err error
-		jobsdbClientsMap[customVal], err = statsd.New(conn, statsd.TagsFormat(statsd.InfluxDB), statsd.Tags("instanceName", instanceID, "customVal", customVal))
+		jobsdbClientsMap[customVal], err = statsd.New(conn, statsd.TagsFormat(statsd.InfluxDB), statsd.Tags("instanceName", instanceName, "customVal", customVal))
 		if err != nil {
 			logger.Error(err)
 		}
