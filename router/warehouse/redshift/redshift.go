@@ -39,8 +39,8 @@ type HandleT struct {
 
 var dataTypesMap = map[string]string{
 	"boolean":  "boolean",
-	"int":      "double precision",
-	"bigint":   "double precision",
+	"int":      "bigint",
+	"bigint":   "bigint",
 	"float":    "double precision",
 	"string":   "varchar(512)",
 	"datetime": "timestamp",
@@ -155,7 +155,9 @@ type S3ManifestT struct {
 
 func (rs *HandleT) generateManifest(bucketName, tableName string, columnMap map[string]string) (string, error) {
 	csvObjectLocations, err := warehouseutils.GetLoadFileLocations(rs.DbHandle, rs.Warehouse.Source.ID, rs.Warehouse.Destination.ID, tableName, rs.Upload.StartLoadFileID, rs.Upload.EndLoadFileID)
-	misc.AssertError(err)
+	if err != nil {
+		panic(err)
+	}
 	csvS3Locations, err := warehouseutils.GetS3Locations(csvObjectLocations)
 	var manifest S3ManifestT
 	for _, location := range csvS3Locations {
@@ -169,11 +171,15 @@ func (rs *HandleT) generateManifest(bucketName, tableName string, columnMap map[
 	tmpDirPath := misc.CreateTMPDIR()
 	localManifestPath := fmt.Sprintf("%v%v", tmpDirPath+dirName, uuid.NewV4().String())
 	err = os.MkdirAll(filepath.Dir(localManifestPath), os.ModePerm)
-	misc.AssertError(err)
+	if err != nil {
+		panic(err)
+	}
 	_ = ioutil.WriteFile(localManifestPath, manifestJSON, 0644)
 
 	file, err := os.Open(localManifestPath)
-	misc.AssertError(err)
+	if err != nil {
+		panic(err)
+	}
 	defer file.Close()
 
 	uploader, err := filemanager.New(&filemanager.SettingsT{
@@ -355,7 +361,9 @@ func (rs *HandleT) MigrateSchema() (err error) {
 		return
 	}
 	err = warehouseutils.SetUploadStatus(rs.Upload, warehouseutils.UpdatedSchemaState, rs.DbHandle)
-	misc.AssertError(err)
+	if err != nil {
+		panic(err)
+	}
 	err = warehouseutils.UpdateCurrentSchema(rs.Namespace, rs.Warehouse, rs.Upload.ID, rs.CurrentSchema, updatedSchema, rs.DbHandle)
 	timer.End()
 	if err != nil {
@@ -368,7 +376,9 @@ func (rs *HandleT) MigrateSchema() (err error) {
 func (rs *HandleT) Export() (err error) {
 	logger.Infof("RS: Starting export to redshift for source:%s and wh_upload:%v", rs.Warehouse.Source.ID, rs.Upload.ID)
 	err = warehouseutils.SetUploadStatus(rs.Upload, warehouseutils.ExportingDataState, rs.DbHandle)
-	misc.AssertError(err)
+	if err != nil {
+		panic(err)
+	}
 	timer := warehouseutils.DestStat(stats.TimerType, "upload_time", rs.Warehouse.Destination.ID)
 	timer.Start()
 	errList := rs.load()
@@ -383,10 +393,12 @@ func (rs *HandleT) Export() (err error) {
 			}
 		}
 		warehouseutils.SetUploadError(rs.Upload, errors.New(errStr), warehouseutils.ExportingDataFailedState, rs.DbHandle)
-		return err
+		return errors.New(errStr)
 	}
 	err = warehouseutils.SetUploadStatus(rs.Upload, warehouseutils.ExportedDataState, rs.DbHandle)
-	misc.AssertError(err)
+	if err != nil {
+		panic(err)
+	}
 	return
 }
 
@@ -396,17 +408,19 @@ func (rs *HandleT) dropDanglingStagingTables() bool {
 								 from information_schema.tables
 								 where table_schema = '%s' AND table_name like '%s';`, rs.Namespace, fmt.Sprintf("%s%s", stagingTablePrefix, "%"))
 	rows, err := rs.Db.Query(sqlStatement)
-	defer rows.Close()
 	if err != nil {
 		logger.Errorf("WH: RS:  Error dropping dangling staging tables in redshift: %v\n", err)
 		return false
 	}
+	defer rows.Close()
 
 	var stagingTableNames []string
 	for rows.Next() {
 		var tableName string
 		err := rows.Scan(&tableName)
-		misc.AssertError(err)
+		if err != nil {
+			panic(err)
+		}
 		stagingTableNames = append(stagingTableNames, tableName)
 	}
 	logger.Infof("WH: RS: Dropping dangling staging tables: %+v  %+v\n", len(stagingTableNames), stagingTableNames)
@@ -434,10 +448,12 @@ func (rs *HandleT) CrashRecover(config warehouseutils.ConfigT) (err error) {
 	if err != nil {
 		return err
 	}
-	curreSchema, err := warehouseutils.GetCurrentSchema(rs.DbHandle, rs.Warehouse)
-	misc.AssertError(err)
-	rs.CurrentSchema = curreSchema.Schema
-	rs.Namespace = curreSchema.Namespace
+	currSchema, err := warehouseutils.GetCurrentSchema(rs.DbHandle, rs.Warehouse)
+	if err != nil {
+		panic(err)
+	}
+	rs.CurrentSchema = currSchema.Schema
+	rs.Namespace = currSchema.Namespace
 	rs.dropDanglingStagingTables()
 	return
 }
@@ -457,10 +473,12 @@ func (rs *HandleT) Process(config warehouseutils.ConfigT) (err error) {
 		warehouseutils.SetUploadError(rs.Upload, err, warehouseutils.UpdatingSchemaFailedState, rs.DbHandle)
 		return err
 	}
-	curreSchema, err := warehouseutils.GetCurrentSchema(rs.DbHandle, rs.Warehouse)
-	misc.AssertError(err)
-	rs.CurrentSchema = curreSchema.Schema
-	rs.Namespace = curreSchema.Namespace
+	currSchema, err := warehouseutils.GetCurrentSchema(rs.DbHandle, rs.Warehouse)
+	if err != nil {
+		panic(err)
+	}
+	rs.CurrentSchema = currSchema.Schema
+	rs.Namespace = currSchema.Namespace
 	if rs.Namespace == "" {
 		logger.Infof("Namespace not found in currentschema for RS:%s, setting from upload: %s", rs.Warehouse.Destination.ID, rs.Upload.Namespace)
 		rs.Namespace = rs.Upload.Namespace
